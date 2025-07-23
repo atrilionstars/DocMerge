@@ -60,7 +60,7 @@ def find_first_html_file():
     # 返回第一个HTML文件，如果有的话
     return html_files[0] if html_files else None
 
-if __name__ == "__main__":
+def main():
     # 示例用法
     import sys
 
@@ -81,3 +81,7 @@ if __name__ == "__main__":
         html_to_docx(html_file, docx_file)
     except Exception as e:
         print(f"操作失败: {e}")
+
+
+if __name__ == "__main__":
+    main()

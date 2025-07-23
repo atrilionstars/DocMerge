@@ -5,7 +5,7 @@ import requests
 from docx import Document
 from tqdm import tqdm
 from typing import List, Tuple
-
+import html2docx
 
 
 BASE_URL = "http://192.168.1.13:8000/v1"
@@ -82,7 +82,7 @@ def create_prompt(files_content: List[Tuple[str, str]], instruction: str = "") -
     if instruction:
         prompt += f"额外说明: {instruction}\n\n"
 
-    # 添加最后的指令，要求模型对文档内容进行融合重写
+    # 要求模型根据以下格式进行融合重写
     prompt += ("输出格式要求：标题：使用方正小标宋_GBK，字号为二号，加粗。_GBK，字号为二号，加粗。一级标题：格式为：一、XXX，方正黑体_GBK，三号，首行缩进值2"
                "字符，左对齐，行间距28磅，与正文之间不空行，不加粗。二级标题：格式为：（二）XXX，楷体，三号，首行缩进值2字符，左对齐，行间距28"
                "磅，与正文之间不空行，不加粗。三级标题：格式为：1.XXX，仿宋，三号，首行缩进值2字符，行间距28磅，左对齐，与正文之间不空行，不加粗。四级标题：格式为：（1"
@@ -200,3 +200,4 @@ def main():
 if __name__ == "__main__":
     # 程序入口点 - 调用主函数
     main()
+    html2docx.main()
