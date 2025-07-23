@@ -74,7 +74,7 @@ if __name__ == "__main__":
             print(f"未指定参数，使用当前目录下的第一个HTML文件: {html_file}")
             docx_file = os.path.splitext(html_file)[0] + ".docx"
         else:
-            print("错误: 当前目录下未找到任何HTML文件")
+            print("错误: 当前目录未找到任何HTML文件")
             sys.exit(1)
 
     try:
