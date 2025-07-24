@@ -1,2 +1,4 @@
 python==3.12
 pywin32==308
+chromadb==1.0.15
+protobuf==6.31.1
