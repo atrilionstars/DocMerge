@@ -200,4 +200,3 @@ def main():
 if __name__ == "__main__":
     # 程序入口点 - 调用主函数
     main()
-    html2docx.main()
