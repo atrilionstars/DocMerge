@@ -1,12 +1,13 @@
-import os
 import argparse
 import json
+import os
+from typing import List, Tuple
+
 import requests
 from docx import Document
 from tqdm import tqdm
-from typing import List, Tuple
-import html2docx
 
+import text_to_docx
 
 BASE_URL = "http://192.168.1.13:8000/v1"
 API_KEY = "2JysWWdHfyKvp2AsGYznw7pwPfkwDehtPZHEtj26GIA"
@@ -72,7 +73,7 @@ def read_docx(file_path: str) -> str:
 def create_prompt(files_content: List[Tuple[str, str]], instruction: str = "") -> str:
     """创建提示词"""
     # 初始化提示词，介绍后续是多个文档的内容
-    prompt = "以下是多个文档的内容，包含段落和表格（表格用特殊标记标识）:\n\n"
+    prompt = "以下是多个文档的内容:\n\n"
 
     # 遍历每个文档，将文档名和内容添加到提示词中
     for i, (filename, content) in enumerate(files_content):
@@ -83,10 +84,7 @@ def create_prompt(files_content: List[Tuple[str, str]], instruction: str = "") -
         prompt += f"额外说明: {instruction}\n\n"
 
     # 要求模型根据以下格式进行融合重写
-    prompt += ("输出格式要求：标题：使用方正小标宋_GBK，字号为二号，加粗。_GBK，字号为二号，加粗。一级标题：格式为：一、XXX，方正黑体_GBK，三号，首行缩进值2"
-               "字符，左对齐，行间距28磅，与正文之间不空行，不加粗。二级标题：格式为：（二）XXX，楷体，三号，首行缩进值2字符，左对齐，行间距28"
-               "磅，与正文之间不空行，不加粗。三级标题：格式为：1.XXX，仿宋，三号，首行缩进值2字符，行间距28磅，左对齐，与正文之间不空行，不加粗。四级标题：格式为：（1"
-               "）XXX，仿宋，三号，首行缩进值2字符，左对齐，行间距28磅，与正文之间不空行，不加粗。正文格式：仿宋三号，首行缩进值2字符，左对齐，行间距28磅。请按照我给的格式进行排版，输出 html 格式。")
+    prompt += "根据提交的内容，以纯文本格式写一份语句顺畅，逻辑连贯的文档"
     return prompt
 
 def call_llm(prompt: str) -> str:
@@ -96,11 +94,11 @@ def call_llm(prompt: str) -> str:
     payload = {
         "model": MODEL_NAME,
         "messages": [
-            {"role": "system", "content": "你是一个专业的文档融合专家。请根据用户提供的多个文档内容，进行融合重写，确保内容连贯、逻辑清晰，并且保留原文的核心信息。对于表格数据，要准确保留数据关系和关键信息。"},
+            {"role": "system", "content": "你是一个专业的文档融合专家。请根据用户提供的多个文档内容，进行融合重写，确保内容连贯、逻辑清晰，并且保留原文的核心信息。"},
             {"role": "user", "content": prompt}
         ],
-        "temperature": 0.3,
-        "max_tokens": 4000
+        "temperature": 0.7,
+        "max_tokens": 32000
     }
 
     try:
@@ -119,23 +117,6 @@ def call_llm(prompt: str) -> str:
         print(f"API调用错误: {e}")
         return None
 
-def save_to_html(content: str, output_file: str) -> None:
-    """
-    将给定的字符串内容保存为HTML文件
-
-    参数:
-        content (str): 要保存的HTML内容
-        output_file (str): 输出HTML文件的路径
-
-    返回:
-        None
-    """
-    try:
-        with open(output_file, 'w', encoding='utf-8') as file:
-            file.write(content)
-        print(f"内容已成功保存到 {output_file}")
-    except IOError as e:
-        print(f"保存文件时出错: {e}")
 def main():
     # 创建命令行参数解析器，设置工具描述
     parser = argparse.ArgumentParser(description="多文档融合重写工具")
@@ -162,7 +143,7 @@ def main():
     if not args.output:
         print("未指定输出文件，将使用默认名称")
         current_dir = os.getcwd()
-        args.output = os.path.join(current_dir, "融合文档.html")
+        args.output = os.path.join(current_dir, "融合文档.docx")
 
     # 检查输入文件是否存在 - 收集不存在的文件
     invalid_files = [f for f in args.input if not os.path.exists(f)]
@@ -193,10 +174,9 @@ def main():
     # 处理API返回结果 - 如果成功则保存文档，否则显示错误信息
     if result:
         # 保存结果
-        save_to_html(result, args.output)
+        text_to_docx.convert_text_to_docx(result, args.output)
     else:
         print("融合失败，未能获取有效内容")
 
 if __name__ == "__main__":
-    # 程序入口点 - 调用主函数
     main()
