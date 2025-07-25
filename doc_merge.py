@@ -7,7 +7,6 @@ import markdown
 import requests
 from bs4 import BeautifulSoup
 from docx import Document
-from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor, Inches
@@ -99,7 +98,7 @@ def call_llm(prompt: str) -> str:
         "model": MODEL_NAME,
         "messages": [
             {"role": "system", "content":
-                "你是一个专业的文职秘书，负责撰写工作。不要加任何引导语或总结性语句，不要用口语化表述"},
+                "你是一个专业的文职秘书，负责撰写工作，输出的内容不要添加任何引导语或总结性语句，勿用口语化表述。"},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.3
@@ -123,9 +122,7 @@ def call_llm(prompt: str) -> str:
 
 def md_content_to_word(md_content, output_filename="output.docx"):
     """
-    将Markdown字符串内容转换为Word文档并保存到当前工作路径，支持更多格式和样式
-
-    参数:
+        参数:
         md_content: Markdown格式的字符串内容
         output_filename: 输出Word文档文件名，默认为"output.docx"
     """
@@ -142,24 +139,6 @@ def md_content_to_word(md_content, output_filename="output.docx"):
     # 设置纸张大小为A4
     section.page_width = Inches(8.27)
     section.page_height = Inches(11.69)
-
-    # 自定义样式 - 代码块
-    code_style = doc.styles.add_style('CodeBlock', WD_STYLE_TYPE.PARAGRAPH)
-    code_style.base_style = doc.styles['Normal']
-    code_font = code_style.font
-    code_font.name = 'Consolas'
-    code_font.size = Pt(10)
-    code_style._element.rPr.rFonts.set(qn('w:eastAsia'), 'Consolas')
-    code_style.paragraph_format.left_indent = Inches(0.3)
-    code_style.paragraph_format.right_indent = Inches(0.3)
-    code_style.paragraph_format.line_spacing = 1.0
-    # 设置背景色
-    shading_elm = code_style._element.xpath('.//w:shd')[0] if code_style._element.xpath('.//w:shd') else None
-    if not shading_elm:
-        from docx.oxml import OxmlElement
-        shading_elm = OxmlElement('w:shd')
-        code_style._element.get_or_add_pPr().append(shading_elm)
-    shading_elm.set(qn('w:fill'), 'F5F5F5')  # 浅灰色背景
 
     # 正文样式
     normal_style = doc.styles['Normal']
@@ -191,17 +170,6 @@ def md_content_to_word(md_content, output_filename="output.docx"):
         heading_style.paragraph_format.space_before = Pt(12)
         heading_style.paragraph_format.space_after = title_spacing[level-1]
         heading_style.paragraph_format.line_spacing = 1.2
-
-    # 引用样式
-    quote_style = doc.styles.add_style('Quote1', WD_STYLE_TYPE.PARAGRAPH)
-    quote_style.base_style = doc.styles['Normal']
-    quote_font = quote_style.font
-    quote_font.name = '宋体'
-    quote_font.size = Pt(11)
-    quote_style._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
-    quote_style.paragraph_format.left_indent = Inches(0.5)
-    quote_style.paragraph_format.right_indent = Inches(0.3)
-
 
     # 将Markdown转换为HTML，然后使用BeautifulSoup解析
     html = markdown.markdown(
@@ -249,40 +217,20 @@ def md_content_to_word(md_content, output_filename="output.docx"):
             process_list(element, doc, is_ordered=True)
             continue
 
-        # 处理代码块
-        if element.name in ['pre', 'code']:
-            if element.name == 'pre' and element.code:
-                code_text = element.code.get_text()
-            else:
-                code_text = element.get_text()
-
-            # 保留代码格式
-            para = doc.add_paragraph(code_text, style='CodeBlock')
-            continue
-
-        # 处理引用块
-        if element.name == 'blockquote':
-            para = doc.add_paragraph()
-            para.style = 'Quote'
-            for child in element.contents:
-                if child.name == 'p':
-                    process_inline_element(child, para)
-            continue
-
         # 处理表格
         if element.name == 'table':
             process_table(element, doc)
             continue
 
-        # 处理图片
-        if element.name == 'img':
-            process_image(element, doc)
-            continue
 
     # 获取当前工作路径并保存Word文档
     output_path = os.path.join(os.getcwd(), output_filename)
     doc.save(output_path)
     print(f"转换完成，文件已保存至: {output_path}")
+    # 保存一个文本版本用于对比
+    text_output_file = output_path.replace('.docx', '_debug.txt')
+    with open(text_output_file, 'w', encoding='utf-8') as f:
+        f.write(md_content)
     return output_path
 
 def process_inline_element(element, paragraph):
@@ -295,18 +243,6 @@ def process_inline_element(element, paragraph):
     if element.name is None:
         return
 
-    # 处理粗体
-    if element.name == 'strong' or element.name == 'b':
-        run = paragraph.add_run(element.get_text())
-        run.bold = True
-        return
-
-    # 处理斜体
-    if element.name == 'em' or element.name == 'i':
-        run = paragraph.add_run(element.get_text())
-        run.italic = True
-        return
-
     # 处理链接
     if element.name == 'a':
         url = element.get('href', '')
@@ -317,21 +253,16 @@ def process_inline_element(element, paragraph):
         # 注意：python-docx不直接支持超链接，这里仅设置样式
         return
 
-    # 处理代码（行内）
-    if element.name == 'code':
-        run = paragraph.add_run(element.get_text())
-        run.font.name = 'Consolas'
-        run.font.size = Pt(10)
-        run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Consolas')
-        return
-
     # 处理其他行内元素
     for child in element.contents:
         process_inline_element(child, paragraph)
 
 def process_list(list_element, doc, is_ordered=False):
     """处理列表（有序和无序）"""
-    list_style = 'List Number' if is_ordered else 'List Bullet'
+    # list_style = 'List Number' if is_ordered else 'List Bullet'
+
+    #统一用无序列表
+    list_style = 'List Bullet'
     current_para = None
 
     for item in list_element.find_all('li', recursive=False):
@@ -378,32 +309,6 @@ def process_table(table_element, doc):
 
     # 添加表格后的空行
     doc.add_paragraph()
-
-def process_image(img_element, doc):
-    """处理图片（注意：需要图片路径可访问）"""
-    src = img_element.get('src', '')
-    alt = img_element.get('alt', '图片')
-
-    # 尝试添加图片
-    try:
-        # 检查路径是否有效
-        if os.path.exists(src):
-            para = doc.add_paragraph()
-            para.alignment = WD_ALIGN_PARAGRAPH.CENTER  # 图片居中
-            run = para.add_run()
-            run.add_picture(src, width=Inches(5))  # 限制最大宽度
-            # 添加图片说明
-            if alt:
-                caption = doc.add_paragraph(alt)
-                caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                caption.font.size = Pt(10)
-        else:
-            # 添加无法找到图片的提示
-            para = doc.add_paragraph(f"[无法显示图片: {alt}, 路径: {src}]")
-            para.font.color.rgb = RGBColor(255, 0, 0)  # 红色提示
-    except Exception as e:
-        para = doc.add_paragraph(f"[图片处理错误: {str(e)}]")
-        para.font.color.rgb = RGBColor(255, 0, 0)  # 红色提示
 
 def main():
     # 创建命令行参数解析器，设置工具描述
