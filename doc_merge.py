@@ -88,7 +88,7 @@ def create_prompt(files_content: List[Tuple[str, str]], instruction: str = "") -
         prompt += f"额外说明: {instruction}\n\n"
 
     # 要求模型根据以下格式进行融合重写
-    prompt += "根据提交的内容，以纯文本格式写一份语句顺畅，逻辑连贯的文档"
+    prompt += "请将我提供的多个Word文档内容进行整合重写，要求如下：1.提取各文档的核心信息。2.保留所有文档中的独特数据和观点。3.按逻辑重新组织章节结构"
     return prompt
 
 def call_llm(prompt: str) -> str:
@@ -98,7 +98,8 @@ def call_llm(prompt: str) -> str:
     payload = {
         "model": MODEL_NAME,
         "messages": [
-            {"role": "system", "content": "你是一个专业的文档融合专家。请根据用户提供的多个文档内容，进行融合重写，确保内容连贯、逻辑清晰，并且保留原文的核心信息。"},
+            {"role": "system", "content":
+                "你是一个专业的文职秘书，负责撰写工作。不要加任何引导语或总结性语句，不要用口语化表述"},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.3
