@@ -88,7 +88,7 @@ def create_prompt(files_content: List[Tuple[str, str]], instruction: str = "") -
         prompt += f"额外说明: {instruction}\n\n"
 
     # 要求模型根据以下格式进行融合重写
-    prompt += "根据提交的内容，以纯文本格式写一份语句顺畅，逻辑连贯的文档"
+    prompt += "请将我提供的多个Word文档内容进行整合重写，要求如下：1.提取各文档的核心信息。2.保留所有文档中的独特数据和观点。3.按逻辑重新组织章节结构"
     return prompt
 
 def call_llm(prompt: str) -> str:
@@ -98,7 +98,8 @@ def call_llm(prompt: str) -> str:
     payload = {
         "model": MODEL_NAME,
         "messages": [
-            {"role": "system", "content": "你是一个专业的文档融合专家。请根据用户提供的多个文档内容，进行融合重写，确保内容连贯、逻辑清晰，并且保留原文的核心信息。"},
+            {"role": "system", "content":
+                "你是一个专业的文职秘书，负责公司的撰写工作，勿用口语化表述。"},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.3
@@ -142,24 +143,6 @@ def md_content_to_word(md_content, output_filename="output.docx"):
     section.page_width = Inches(8.27)
     section.page_height = Inches(11.69)
 
-    # 自定义样式 - 代码块
-    code_style = doc.styles.add_style('CodeBlock', WD_STYLE_TYPE.PARAGRAPH)
-    code_style.base_style = doc.styles['Normal']
-    code_font = code_style.font
-    code_font.name = 'Consolas'
-    code_font.size = Pt(10)
-    code_style._element.rPr.rFonts.set(qn('w:eastAsia'), 'Consolas')
-    code_style.paragraph_format.left_indent = Inches(0.3)
-    code_style.paragraph_format.right_indent = Inches(0.3)
-    code_style.paragraph_format.line_spacing = 1.0
-    # 设置背景色
-    shading_elm = code_style._element.xpath('.//w:shd')[0] if code_style._element.xpath('.//w:shd') else None
-    if not shading_elm:
-        from docx.oxml import OxmlElement
-        shading_elm = OxmlElement('w:shd')
-        code_style._element.get_or_add_pPr().append(shading_elm)
-    shading_elm.set(qn('w:fill'), 'F5F5F5')  # 浅灰色背景
-
     # 正文样式
     normal_style = doc.styles['Normal']
     normal_font = normal_style.font
@@ -190,17 +173,6 @@ def md_content_to_word(md_content, output_filename="output.docx"):
         heading_style.paragraph_format.space_before = Pt(12)
         heading_style.paragraph_format.space_after = title_spacing[level-1]
         heading_style.paragraph_format.line_spacing = 1.2
-
-    # 引用样式
-    quote_style = doc.styles.add_style('Quote1', WD_STYLE_TYPE.PARAGRAPH)
-    quote_style.base_style = doc.styles['Normal']
-    quote_font = quote_style.font
-    quote_font.name = '宋体'
-    quote_font.size = Pt(11)
-    quote_style._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
-    quote_style.paragraph_format.left_indent = Inches(0.5)
-    quote_style.paragraph_format.right_indent = Inches(0.3)
-
 
     # 将Markdown转换为HTML，然后使用BeautifulSoup解析
     html = markdown.markdown(
@@ -248,35 +220,11 @@ def md_content_to_word(md_content, output_filename="output.docx"):
             process_list(element, doc, is_ordered=True)
             continue
 
-        # 处理代码块
-        if element.name in ['pre', 'code']:
-            if element.name == 'pre' and element.code:
-                code_text = element.code.get_text()
-            else:
-                code_text = element.get_text()
-
-            # 保留代码格式
-            para = doc.add_paragraph(code_text, style='CodeBlock')
-            continue
-
-        # 处理引用块
-        if element.name == 'blockquote':
-            para = doc.add_paragraph()
-            para.style = 'Quote'
-            for child in element.contents:
-                if child.name == 'p':
-                    process_inline_element(child, para)
-            continue
-
         # 处理表格
         if element.name == 'table':
             process_table(element, doc)
             continue
 
-        # 处理图片
-        if element.name == 'img':
-            process_image(element, doc)
-            continue
 
     # 获取当前工作路径并保存Word文档
     output_path = os.path.join(os.getcwd(), output_filename)
@@ -377,32 +325,6 @@ def process_table(table_element, doc):
 
     # 添加表格后的空行
     doc.add_paragraph()
-
-def process_image(img_element, doc):
-    """处理图片（注意：需要图片路径可访问）"""
-    src = img_element.get('src', '')
-    alt = img_element.get('alt', '图片')
-
-    # 尝试添加图片
-    try:
-        # 检查路径是否有效
-        if os.path.exists(src):
-            para = doc.add_paragraph()
-            para.alignment = WD_ALIGN_PARAGRAPH.CENTER  # 图片居中
-            run = para.add_run()
-            run.add_picture(src, width=Inches(5))  # 限制最大宽度
-            # 添加图片说明
-            if alt:
-                caption = doc.add_paragraph(alt)
-                caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                caption.font.size = Pt(10)
-        else:
-            # 添加无法找到图片的提示
-            para = doc.add_paragraph(f"[无法显示图片: {alt}, 路径: {src}]")
-            para.font.color.rgb = RGBColor(255, 0, 0)  # 红色提示
-    except Exception as e:
-        para = doc.add_paragraph(f"[图片处理错误: {str(e)}]")
-        para.font.color.rgb = RGBColor(255, 0, 0)  # 红色提示
 
 def main():
     # 创建命令行参数解析器，设置工具描述

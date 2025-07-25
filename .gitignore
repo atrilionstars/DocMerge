@@ -3,8 +3,5 @@
 /*_test.py
 **/*.docx
 **/*.html
-/test/*.docx
-/test/*.txt
 /test/
 /submission/
-/test/
