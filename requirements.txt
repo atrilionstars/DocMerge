@@ -1,2 +1,6 @@
 python==3.12
 pywin32==308
+
+requests~=2.32.4
+markdown~=3.3
+tqdm~=4.67.1

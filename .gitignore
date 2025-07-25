@@ -1,4 +1,7 @@
-/融合文档.docx
-/融合文档.html
-/doc2.docx
-/doc1.docx
+/*.docx
+/*.html
+/*_test.py
+**/*.docx
+**/*.html
+/test/
+/submission/
