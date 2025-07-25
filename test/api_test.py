@@ -18,7 +18,7 @@ def test_text_generation():
     payload = {
         "model": MODEL_NAME,
         "messages": [
-            {"role": "user", "content": "你好，你是谁？"}
+            {"role": "user", "content": "你好，特斯拉有几款车型？"}
         ],
         "temperature": 0.7
     }
